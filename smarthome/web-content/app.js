@@ -613,6 +613,285 @@ function safeFetchStats() {
 // Poll every 2 seconds
 setInterval(safeFetchStats, 2000);
 
+// ============================================
+// VOICE COMMAND SYSTEM (WITH SIMULATION FALLBACK)
+// ============================================
+
+let recognition = null;
+let isListening = false;
+
+// Initialize Speech Recognition
+function initVoiceRecognition() {
+    // Check if browser supports Speech Recognition
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+        console.warn('Speech Recognition not supported. Simulation mode enabled.');
+        return;
+    }
+
+    recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+        isListening = true;
+        updateVoiceButton(true);
+        showVoiceFeedback('Listening...', 'listening');
+    };
+
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript.toLowerCase();
+        handleSystemAction(transcript);
+    };
+
+    recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        if (event.error === 'network') {
+            showVoiceFeedback('Network Error: Voice requires internet. Hover/Click for Manual Simulation.', 'error');
+        } else {
+            showVoiceFeedback(`Voice Error: ${event.error}. Use Simulation mode.`, 'error');
+        }
+        isListening = false;
+        updateVoiceButton(false);
+
+        // Show manual prompt after a short delay
+        setTimeout(() => {
+            if (!isListening) promptSimulation();
+        }, 2000);
+    };
+
+    recognition.onend = () => {
+        isListening = false;
+        updateVoiceButton(false);
+    };
+}
+
+// Main handler for both voice and manual simulation
+async function handleSystemAction(command) {
+    console.log('Processing Command:', command);
+    showVoiceFeedback(`Processing: "${command}"`, 'processing');
+    await processVoiceCommand(command);
+}
+
+// Manual Simulation Fallback (Ideal for Presentations)
+function promptSimulation() {
+    const cmd = prompt("Voice Simulation Mode:\nType a command (e.g., 'Turn on Main Light', 'Add room Office', 'Status')");
+    if (cmd) {
+        handleSystemAction(cmd.toLowerCase());
+    }
+}
+
+// Toggle voice recognition
+function toggleVoiceRecognition(e) {
+    // If user holds Shift or Alt, go straight to simulation
+    if (e && (e.shiftKey || e.altKey)) {
+        promptSimulation();
+        return;
+    }
+
+    if (!recognition) {
+        initVoiceRecognition();
+        if (!recognition) {
+            promptSimulation();
+            return;
+        }
+    }
+
+    if (isListening) {
+        recognition.stop();
+    } else {
+        try {
+            recognition.start();
+        } catch (e) {
+            console.warn("Recognition already started or blocked:", e);
+            promptSimulation();
+        }
+    }
+}
+
+// Update voice button appearance
+function updateVoiceButton(listening) {
+    const voiceBtn = document.getElementById('voice-btn');
+    const voiceIcon = document.getElementById('voice-icon');
+
+    if (voiceBtn) {
+        if (listening) {
+            voiceBtn.classList.add('listening');
+            if (voiceIcon) voiceIcon.textContent = '🎤';
+        } else {
+            voiceBtn.classList.remove('listening');
+            if (voiceIcon) voiceIcon.textContent = '🎙️';
+        }
+    }
+}
+
+// Show voice feedback
+function showVoiceFeedback(message, type = 'info') {
+    const feedbackEl = document.getElementById('voice-feedback');
+    if (!feedbackEl) return;
+
+    feedbackEl.textContent = message;
+    feedbackEl.className = 'voice-feedback ' + type;
+    feedbackEl.style.display = 'block';
+
+    // Auto-hide after 4 seconds
+    setTimeout(() => {
+        if (feedbackEl.textContent === message) {
+            feedbackEl.style.display = 'none';
+        }
+    }, 4000);
+}
+
+// Process voice commands
+async function processVoiceCommand(command) {
+    // Normalize command
+    command = command.trim().toLowerCase();
+
+    // Command patterns
+    const patterns = {
+        // Turn on/off specific device
+        turnOn: /turn on (the )?(.+)/,
+        turnOff: /turn off (the )?(.+)/,
+
+        // Toggle device
+        toggle: /toggle (the )?(.+)/,
+
+        // Room commands
+        addRoom: /add room (.+)/,
+        createRoom: /create room (.+)/,
+
+        // Status queries
+        status: /what('s| is) (the )?status/,
+        energy: /how much energy|energy consumption|total energy/,
+
+        // All on/off
+        allOn: /turn (on )?(everything|all (devices|lights)) on/,
+        allOff: /turn (off )?(everything|all (devices|lights)) off/,
+    };
+
+    try {
+        // Turn on device
+        if (patterns.turnOn.test(command)) {
+            const match = command.match(patterns.turnOn);
+            const deviceName = match[2];
+            await controlDeviceByName(deviceName, 'on');
+            speak(`Turning on ${deviceName}`);
+            showVoiceFeedback(`✓ Turned on ${deviceName}`, 'success');
+        }
+        // Turn off device
+        else if (patterns.turnOff.test(command)) {
+            const match = command.match(patterns.turnOff);
+            const deviceName = match[2];
+            await controlDeviceByName(deviceName, 'off');
+            speak(`Turning off ${deviceName}`);
+            showVoiceFeedback(`✓ Turned off ${deviceName}`, 'success');
+        }
+        // Toggle device
+        else if (patterns.toggle.test(command)) {
+            const match = command.match(patterns.toggle);
+            const deviceName = match[2];
+            await controlDeviceByName(deviceName, 'toggle');
+            speak(`Toggling ${deviceName}`);
+            showVoiceFeedback(`✓ Toggled ${deviceName}`, 'success');
+        }
+        // Add room
+        else if (patterns.addRoom.test(command) || patterns.createRoom.test(command)) {
+            const match = command.match(patterns.addRoom) || command.match(patterns.createRoom);
+            const roomName = match[1];
+            await addRoomByVoice(roomName);
+            speak(`Creating room ${roomName}`);
+            showVoiceFeedback(`✓ Created room: ${roomName}`, 'success');
+        }
+        // Energy status
+        else if (patterns.energy.test(command)) {
+            const totalEnergy = document.getElementById('total-energy-value').textContent;
+            speak(`Total energy consumption is ${totalEnergy}`);
+            showVoiceFeedback(`Total: ${totalEnergy}`, 'success');
+        }
+        // Status
+        else if (patterns.status.test(command)) {
+            speak('All systems operational');
+            showVoiceFeedback('✓ All systems operational', 'success');
+        }
+        // Unknown command
+        else {
+            speak('Sorry, I did not understand that command');
+            showVoiceFeedback('❌ Command not recognized. Try: "Turn on [device]"', 'error');
+        }
+    } catch (error) {
+        console.error('Error processing command:', error);
+        speak('Sorry, there was an error processing your command');
+        showVoiceFeedback(`❌ Error: ${error.message}`, 'error');
+    }
+}
+
+// Control device by name
+async function controlDeviceByName(deviceName, action) {
+    const response = await fetch('/api/stats');
+    const data = await response.json();
+
+    let foundDevice = null;
+    for (const room of data.rooms) {
+        for (const device of room.devices) {
+            if (device.name.toLowerCase().includes(deviceName) ||
+                deviceName.includes(device.name.toLowerCase())) {
+                foundDevice = device;
+                break;
+            }
+        }
+        if (foundDevice) break;
+    }
+
+    if (!foundDevice) throw new Error(`Device "${deviceName}" not found`);
+
+    if (action === 'toggle') {
+        await toggleDevice(foundDevice.id);
+    } else {
+        const isCurrentlyOn = foundDevice.status.toUpperCase().includes('ON');
+        const shouldToggle = (action === 'on' && !isCurrentlyOn) || (action === 'off' && isCurrentlyOn);
+        if (shouldToggle) await toggleDevice(foundDevice.id);
+    }
+}
+
+// Add room via voice
+async function addRoomByVoice(roomName) {
+    // Capitalize first letter
+    roomName = roomName.charAt(0).toUpperCase() + roomName.slice(1);
+
+    const response = await fetch(`/api/rooms/add?name=${encodeURIComponent(roomName)}`, { method: 'POST' });
+    const data = await response.json();
+
+    if (data.status !== 'ok') throw new Error(data.error || 'Failed to add room');
+
+    await fetchStats();
+}
+
+// Text-to-speech function
+function speak(text) {
+    if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        window.speechSynthesis.speak(utterance);
+    }
+}
+
+// Global Keyboard Shortcut: Press 'V' for Voice Simulation
+window.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() === 'v' && e.target.tagName !== 'INPUT') {
+        promptSimulation();
+    }
+});
+
+// Initialize voice recognition when page loads
+window.addEventListener('DOMContentLoaded', () => {
+    initVoiceRecognition();
+});
+
+
 // Debounce timer for sliders
 let sliderDebounceTimer = null;
 
@@ -626,13 +905,9 @@ document.addEventListener('input', function (e) {
 
         // Update display value immediately
         if (valueSpan) {
-            if (action === 'setBrightness') {
-                valueSpan.textContent = slider.value + '%';
-            } else if (action === 'setTargetTemperature') {
-                valueSpan.textContent = slider.value + '°C';
-            } else if (action === 'setSensitivity') {
-                valueSpan.textContent = slider.value + '/10';
-            }
+            if (action === 'setBrightness') valueSpan.textContent = slider.value + '%';
+            else if (action === 'setTargetTemperature') valueSpan.textContent = slider.value + '°C';
+            else if (action === 'setSensitivity') valueSpan.textContent = slider.value + '/10';
         }
 
         // Debounce the API call - only send after 300ms of no input

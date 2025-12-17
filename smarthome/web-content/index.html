@@ -16,8 +16,17 @@
     <div class="container">
         <header>
             <h1>Smart Energy</h1>
-            <div id="connection-status" class="status-badge">Connecting...</div>
+            <div class="header-controls">
+                <button id="voice-btn" class="voice-btn" onclick="toggleVoiceRecognition()" title="Voice Control">
+                    <span id="voice-icon">🎙️</span>
+                </button>
+                <div id="connection-status" class="status-badge">Connecting...</div>
+            </div>
         </header>
+
+        <!-- Voice Feedback Display -->
+        <div id="voice-feedback" class="voice-feedback" style="display: none;"></div>
+
 
         <main>
             <section class="summary">
