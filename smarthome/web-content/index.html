@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energy Consumption Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Optional for charts -->
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Smart Home Energy</h1>
+            <div id="connection-status" class="status-badge">Connecting...</div>
+        </header>
+
+        <main>
+            <section class="summary">
+                <div class="card total-energy">
+                    <h2>Total Consumption</h2>
+                    <div class="value" id="total-energy-value">0.0 W</div>
+                </div>
+                <div class="card system-status">
+                    <h2>System Status</h2>
+                    <div class="value">Active</div>
+                </div>
+                <div class="card active-rules-card">
+                    <h2>Active Rules</h2>
+                    <div id="dashboard-rules-list" class="rules-list">
+                        <p class="no-rules">Loading rules...</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="rooms-grid" id="rooms-container">
+                <!-- Rooms will be injected here -->
+            </section>
+
+            <section class="management" id="management">
+                <h2>Management</h2>
+                <div class="forms-container">
+                    <!-- System Control -->
+
+
+                    <!-- Search Device -->
+                    <div class="card form-card">
+                        <h3>Search Device</h3>
+                        <div class="form-group">
+                            <label for="search-input">Search by ID, Name or Type</label>
+                            <input type="text" id="search-input" placeholder="Type to search..."
+                                onkeyup="handleSearch()">
+                        </div>
+                        <div id="search-results" class="search-results"></div>
+                    </div>
+
+                    <!-- Central Controller (Unified) -->
+                    <div class="card form-card">
+                        <h3>Central Controller</h3>
+
+                        <!-- Bulk Operations -->
+                        <div class="control-group">
+                            <h4>Global Controls</h4>
+                            <div class="control-actions">
+                                <button class="btn-bulk-on" onclick="handleBulkOn()">Turn All ON</button>
+                                <button class="btn-bulk-off" onclick="handleBulkOff()">Turn All OFF</button>
+                            </div>
+                        </div>
+
+                        <!-- Schedule Presets -->
+                        <div class="control-group">
+                            <h4>Schedule Scenarios</h4>
+                            <div class="control-actions">
+                                <button class="btn-primary" onclick="handlePreset('Heat6AM')">Heat at 6 AM</button>
+                                <button class="btn-primary" onclick="handlePreset('Lights8PM')">Lights Off 8 PM</button>
+                                <button class="btn-primary" onclick="handlePreset('CheckSensors')">Check Sensors
+                                    12PM</button>
+                            </div>
+                        </div>
+
+                        <!-- Time Simulation -->
+                        <div class="control-group">
+                            <h4>Simulation</h4>
+                            <div class="form-group">
+                                <label for="sim-time" style="margin-bottom: 0.25rem;">Current Time</label>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <input type="time" id="sim-time" value="06:00">
+                                    <button class="btn-primary" onclick="handleScheduleCheck()">Run Simulation</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Active Rules List -->
+                    <div class="card form-card">
+                        <h3>Active Rules</h3>
+                        <div id="rules-list" class="rules-list">
+                            <p class="no-rules">Loading rules...</p>
+                        </div>
+                    </div>
+
+                    <!-- Add Room Form -->
+
+                    <div class="card form-card">
+                        <h3>Add Room</h3>
+                        <div class="form-group">
+                            <label for="new-room-name">Room Name</label>
+                            <input type="text" id="new-room-name" placeholder="E.g., Bedroom">
+                        </div>
+                        <button class="btn-primary" onclick="handleAddRoom()">Add Room</button>
+                    </div>
+
+                    <!-- Add Device Form -->
+                    <div class="card form-card">
+                        <h3>Add Device</h3>
+                        <div class="form-group">
+                            <label for="device-room-select">Select Room</label>
+                            <select id="device-room-select">
+                                <option value="" disabled selected>Select a room...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="new-device-name">Device Name</label>
+                            <input type="text" id="new-device-name" placeholder="E.g., Ceiling Fan">
+                        </div>
+                        <div class="form-group">
+                            <label for="new-device-type">Device Type</label>
+                            <select id="new-device-type">
+                                <option value="Light">Light</option>
+                                <option value="Thermostat">Thermostat</option>
+                                <option value="MotionSensor">Motion Sensor</option>
+                                <option value="SmartTV">Smart TV</option>
+                                <option value="SmartAlarm">Smart Alarm</option>
+                            </select>
+                        </div>
+                        <button class="btn-primary" onclick="handleAddDevice()">Add Device</button>
+                    </div>
+
+                    <!-- Add Automation Rule Form -->
+                    <div class="card form-card">
+                        <h3>Add Automation Rule</h3>
+                        <div class="form-group">
+                            <label for="rule-name">Rule Name</label>
+                            <input type="text" id="rule-name" placeholder="E.g., Auto Light">
+                        </div>
+                        <div class="form-group">
+                            <label for="trigger-device">IF Device (Trigger)</label>
+                            <select id="trigger-device">
+                                <option value="" disabled selected>Select trigger device...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="trigger-state">IS State</label>
+                            <select id="trigger-state">
+                                <option value="ON">ON</option>
+                                <option value="OFF">OFF</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="target-device">THEN Device (Target)</label>
+                            <select id="target-device">
+                                <option value="" disabled selected>Select target device...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="action-state">SET State</label>
+                            <select id="action-state">
+                                <option value="turnOn">Turn ON</option>
+                                <option value="turnOff">Turn OFF</option>
+                            </select>
+                        </div>
+                        <button class="btn-primary" onclick="handleAddRule()">Create Rule</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+
+</html>
