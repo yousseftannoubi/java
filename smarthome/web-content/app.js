@@ -76,7 +76,7 @@ function updateDashboard(data) {
                     <div class="slider-container">
                         <span class="slider-value">🔆</span>
                         <input type="range" min="0" max="100" value="${brightness}" 
-                            onchange="handleControl('${device.id}', 'setBrightness', this.value)">
+                            data-device-id="${device.id}" data-action="setBrightness">
                         <span class="slider-value">${brightness}%</span>
                     </div>
                  `;
@@ -93,7 +93,7 @@ function updateDashboard(data) {
                     <div class="slider-container">
                         <span class="slider-value">🌡️</span>
                         <input type="range" min="10" max="35" step="1" value="${target}" 
-                            onchange="handleControl('${device.id}', 'setTargetTemperature', this.value)">
+                            data-device-id="${device.id}" data-action="setTargetTemperature">
                         <span class="slider-value">${target}°C</span>
                     </div>
                  `;
@@ -203,13 +203,17 @@ async function handleAddDevice() {
 
 
 async function handleControl(id, action, value) {
+    console.log('handleControl called:', { id, action, value });
     try {
         const response = await fetch(`/api/control?id=${id}&action=${action}&value=${value}`, { method: 'POST' });
         const data = await response.json();
+        console.log('handleControl response:', data);
         if (data.status === 'ok') {
             fetchStats(); // Update UI
         }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error('handleControl error:', e);
+    }
 }
 
 async function handleScheduleCheck() {
@@ -472,8 +476,7 @@ updateDashboard = function (data) {
                     <div class="slider-container">
                         <span class="slider-value">🔆</span>
                         <input type="range" min="0" max="100" value="${brightness}" 
-                            onchange="handleControl('${device.id}', 'setBrightness', this.value)"
-                            oninput="this.nextElementSibling.textContent = this.value + '%'">
+                            data-device-id="${device.id}" data-action="setBrightness">
                         <span class="slider-value">${brightness}%</span>
                     </div>
                 `;
@@ -487,8 +490,7 @@ updateDashboard = function (data) {
                     <div class="slider-container">
                         <span class="slider-value">🌡️</span>
                         <input type="range" min="10" max="35" step="1" value="${target}" 
-                            onchange="handleControl('${device.id}', 'setTargetTemperature', this.value)"
-                            oninput="this.nextElementSibling.textContent = this.value + '°C'">
+                            data-device-id="${device.id}" data-action="setTargetTemperature">
                         <span class="slider-value">${target}°C</span>
                     </div>
                 `;
@@ -502,8 +504,7 @@ updateDashboard = function (data) {
                     <div class="slider-container">
                         <span class="slider-value">📡</span>
                         <input type="range" min="1" max="10" step="1" value="${sensitivity}" 
-                            onchange="handleControl('${device.id}', 'setSensitivity', this.value)"
-                            oninput="this.nextElementSibling.textContent = this.value + '/10'">
+                            data-device-id="${device.id}" data-action="setSensitivity">
                         <span class="slider-value">${sensitivity}/10</span>
                     </div>
                 `;
@@ -577,3 +578,36 @@ fetchStats();
 
 // Poll every 2 seconds
 setInterval(fetchStats, 2000);
+
+// Debounce timer for sliders
+let sliderDebounceTimer = null;
+
+// Event delegation for sliders - uses input event with debounce for better responsiveness
+document.addEventListener('input', function (e) {
+    if (e.target.matches('.slider-container input[type="range"]')) {
+        const slider = e.target;
+        const valueSpan = slider.nextElementSibling;
+        const deviceId = slider.dataset.deviceId;
+        const action = slider.dataset.action;
+
+        // Update display value immediately
+        if (valueSpan) {
+            if (action === 'setBrightness') {
+                valueSpan.textContent = slider.value + '%';
+            } else if (action === 'setTargetTemperature') {
+                valueSpan.textContent = slider.value + '°C';
+            } else if (action === 'setSensitivity') {
+                valueSpan.textContent = slider.value + '/10';
+            }
+        }
+
+        // Debounce the API call - only send after 300ms of no input
+        if (deviceId && action) {
+            clearTimeout(sliderDebounceTimer);
+            sliderDebounceTimer = setTimeout(function () {
+                console.log('Slider input (debounced):', { deviceId, action, value: slider.value });
+                handleControl(deviceId, action, slider.value);
+            }, 300);
+        }
+    }
+});
