@@ -76,16 +76,18 @@ public class Light2 extends SmartDevice {
     public double getEnergyConsumption() {
         return isOn() ? brightness * ENERGY_PER_BRIGHTNESS : 0.0;
     }
-    @Override
-public void setEnergyMode(String mode) {
-    if (mode == null) return;
 
-    switch (mode.toUpperCase()) {
-        case "ECO" -> setBrightness(Math.min(brightness, 30));
-        case "NORMAL" -> setBrightness(Math.min(brightness, 60));
-        case "HIGH" -> setBrightness(100);
-        default -> System.out.println("Unknown energy mode: " + mode);
+    @Override
+    public void setEnergyMode(String mode) {
+        if (mode == null)
+            return;
+
+        switch (mode.toUpperCase()) {
+            case "ECO" -> setBrightness(Math.min(brightness, 30));
+            case "NORMAL" -> setBrightness(Math.min(brightness, 60));
+            case "HIGH" -> setBrightness(100);
+            default -> System.out.println("Unknown energy mode: " + mode);
+        }
     }
-}
 
 }

@@ -135,7 +135,7 @@ public class DashboardServer {
                                 && device instanceof Thermostat thermostat) {
                             if (value != null) {
                                 double temp = Double.parseDouble(value);
-                                thermostat.setTargetTemperature(temp);
+                                thermostat.setCurrentTemperature(temp);
                                 response = "{\"status\":\"ok\", \"message\":\"Target temp set to " + temp + "\"}";
                             }
                         } else if ("setSensitivity".equalsIgnoreCase(action)
@@ -306,7 +306,14 @@ public class DashboardServer {
                         String command = actionStr.equalsIgnoreCase("turnOn") ? "ON" : "OFF";
                         Action action = new DeviceAction(command, targetId, false); // false = target by ID
 
-                        AutomationRule rule = new AutomationRule(name, condition, action);
+                        // Create readability description
+                        SmartDevice targetDev = controller.findDeviceById(targetId);
+                        String targetName = targetDev != null ? targetDev.getName() : targetId;
+                        String description = "If " + triggerDevice.getName() + " is " + (state ? "ON" : "OFF") +
+                                " then " + (actionStr.equalsIgnoreCase("turnOn") ? "Turn ON" : "Turn OFF") +
+                                " " + targetName;
+
+                        AutomationRule rule = new AutomationRule(name, description, condition, action);
                         automationEngine.addRule(rule);
 
                         sendJson(t, 200, "{\"status\":\"ok\", \"message\":\"Rule created\"}");
@@ -559,6 +566,8 @@ public class DashboardServer {
             AutomationRule r = rules.get(i);
             json.append("{")
                     .append("\"name\":\"").append(r.getName()).append("\",")
+                    .append("\"description\":\"")
+                    .append(r.getDescription() != null ? r.getDescription() : "No description").append("\",")
                     .append("\"active\":").append(r.isActive())
                     .append("}");
             if (i < rules.size() - 1)

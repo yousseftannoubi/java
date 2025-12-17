@@ -8,6 +8,7 @@ import smarthome.core.CentralController;
  */
 public class AutomationRule {
     private String name;
+    private String description;
     private Condition condition;
     private Action action;
     private boolean isActive;
@@ -15,11 +16,12 @@ public class AutomationRule {
     /**
      * Creates a new AutomationRule.
      * 
-     * @param name      The name of the rule.
-     * @param condition The condition to evaluate.
-     * @param action    The action to execute if the condition is met.
+     * @param name        The name of the rule.
+     * @param description The description of the rule conditions/actions.
+     * @param condition   The condition to evaluate.
+     * @param action      The action to execute if the condition is met.
      */
-    public AutomationRule(String name, Condition condition, Action action) {
+    public AutomationRule(String name, String description, Condition condition, Action action) {
         if (name == null || name.isEmpty())
             throw new IllegalArgumentException("Rule name cannot be empty");
         if (condition == null)
@@ -28,6 +30,7 @@ public class AutomationRule {
             throw new IllegalArgumentException("Action cannot be null");
 
         this.name = name;
+        this.description = description;
         this.condition = condition;
         this.action = action;
         this.isActive = true;
@@ -51,6 +54,10 @@ public class AutomationRule {
 
     public String getName() {
         return name;
+    }
+
+    public String getDescription() {
+        return description;
     }
 
     public boolean isActive() {

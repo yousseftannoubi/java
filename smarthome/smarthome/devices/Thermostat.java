@@ -1,6 +1,5 @@
 package smarthome.devices;
 
-
 /**
  * Smart Thermostat with temperature control
  */
@@ -15,7 +14,7 @@ public class Thermostat extends SmartDevice implements Schedulable {
         super(name, "Thermostat");
         this.currentTemperature = 20.0;
         this.targetTemperature = 22.0;
-        this.mode = "AUTO";
+        this.mode = "HEAT";
         this.schedule = "None";
         this.energyMode = "NORMAL";
     }
@@ -59,7 +58,8 @@ public class Thermostat extends SmartDevice implements Schedulable {
 
     @Override
     public double getEnergyConsumption() {
-        if (!isOn()) return 0;
+        if (!isOn())
+            return 0;
         double baseConsumption = 1500; // 1500W
         double tempDiff = Math.abs(targetTemperature - currentTemperature);
         return baseConsumption * (1 + tempDiff * 0.1) *
@@ -101,7 +101,15 @@ public class Thermostat extends SmartDevice implements Schedulable {
         this.currentTemperature = temp;
     }
 
-    public double getCurrentTemperature() { return currentTemperature; }
-    public double getTargetTemperature() { return targetTemperature; }
-    public String getMode() { return mode; }
+    public double getCurrentTemperature() {
+        return currentTemperature;
+    }
+
+    public double getTargetTemperature() {
+        return targetTemperature;
+    }
+
+    public String getMode() {
+        return mode;
+    }
 }

@@ -31,7 +31,7 @@ function updateDashboard(data) {
     const totalEnergyEl = document.getElementById('total-energy-value');
     // Format to 2 decimal places
     totalEnergyEl.textContent = `${parseFloat(data.totalEnergy).toFixed(2)} W`;
-
+    console.log("totalEnergy: " + data.totalEnergy);
     // Update Rooms
     const roomsContainer = document.getElementById('rooms-container');
     roomsContainer.innerHTML = ''; // Clear current
@@ -66,10 +66,12 @@ function updateDashboard(data) {
 
             // Extract attributes from status string for sliders (fragile parsing but simulation works)
             let extraControls = '';
+            console.log("device: " + device.type);
 
             // Light Brightness Slider
             if (device.type === 'Light' || device.name.includes('[Light]')) {
                 // Try parsing brightness
+                console.log("device: " + device.status);
                 const match = device.status.match(/Brightness: (\d+)%/);
                 const brightness = match ? parseInt(match[1]) : 0;
                 extraControls += `
@@ -83,12 +85,15 @@ function updateDashboard(data) {
             }
 
             // Thermostat Temp Slider
-            if (device.type === 'Thermostat') {
+            console.log("device: " + device.type);
+            console.log("device: " + device.name);
+            if (device.type === 'Thermostat' || device.name.includes('[Thermostat]')) {
                 // Update regex to match exact status format from Thermostat.java: 
                 // " | Current: %.1f°C | Target: %.1f°C | Mode: %s"
                 // Or simple match
-                const match = device.status.match(/Target: ([\d.]+)°C/);
-                const target = match ? parseFloat(match[1]) : 22.0; // Default if not found
+                const match = device.status.match(/Current: ([\d.]+)°C/);
+                const target = match ? parseFloat(match[1]) : 2.0; // Default if not found
+                console.log("target: " + target);
                 extraControls += `
                     <div class="slider-container">
                         <span class="slider-value">🌡️</span>
@@ -244,7 +249,13 @@ function updateRulesList(rules) {
             const div = document.createElement('div');
             div.className = 'rule-item';
             const statusClass = r.active ? 'rule-active' : 'rule-inactive';
-            div.innerHTML = `<span>${r.name}</span> <span class="${statusClass}">${r.active ? 'ACTIVE' : 'INACTIVE'}</span>`;
+            div.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; width:100%">
+                    <span style="font-weight:bold">${r.name}</span> 
+                    <span class="${statusClass}">${r.active ? 'ACTIVE' : 'INACTIVE'}</span>
+                </div>
+                ${r.description ? `<div style="font-size:0.85em; color:#aaa; margin-top:4px">${r.description}</div>` : ''}
+            `;
             el.appendChild(div);
         });
     };
@@ -481,17 +492,21 @@ updateDashboard = function (data) {
                     </div>
                 `;
             }
+            console.log("device: " + device.type);
+            console.log("device: " + device.status);
 
             // Thermostat Temperature Slider
-            if (device.type === 'Thermostat') {
-                const match = device.status.match(/Target: ([\d.]+)°C/);
-                const target = match ? parseFloat(match[1]) : 22.0;
+            if (device.type === 'Thermostat' || device.name.includes('Heater')) {
+                console.log("device status: " + device.status);
+                const match = device.status.match(/Current: ([\d.,]+)°C/);
+                console.log("match: " + match);
+                const targetTemperature = match ? parseFloat(match[1]) : 2.0;
                 extraControls += `
                     <div class="slider-container">
                         <span class="slider-value">🌡️</span>
-                        <input type="range" min="10" max="35" step="1" value="${target}" 
+                        <input type="range" min="10" max="35" step="1" value="${targetTemperature}" 
                             data-device-id="${device.id}" data-action="setTargetTemperature">
-                        <span class="slider-value">${target}°C</span>
+                        <span class="slider-value">${targetTemperature}°C</span>
                     </div>
                 `;
             }
@@ -574,10 +589,29 @@ function updateRoomSelect(rooms) {
 }
 
 // Initial fetch
+// Initial fetch
 fetchStats();
 
+// Interaction state tracking to prevent DOM updates while sliding
+let isInteracting = false;
+
+['mousedown', 'touchstart'].forEach(evt =>
+    document.addEventListener(evt, e => {
+        if (e.target.matches('input[type="range"]')) isInteracting = true;
+    })
+);
+
+['mouseup', 'touchend'].forEach(evt =>
+    document.addEventListener(evt, () => isInteracting = false)
+);
+
+function safeFetchStats() {
+    if (isInteracting) return;
+    fetchStats();
+}
+
 // Poll every 2 seconds
-setInterval(fetchStats, 2000);
+setInterval(safeFetchStats, 2000);
 
 // Debounce timer for sliders
 let sliderDebounceTimer = null;

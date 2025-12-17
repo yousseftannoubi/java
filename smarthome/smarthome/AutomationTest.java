@@ -38,7 +38,8 @@ public class AutomationTest {
         // Rule 1: Motion -> Turn Light On
         Action turnOnLight = new DeviceAction("ON", mainLight.getId(), false);
         Condition motionDetected = new SensorCondition("MotionSensor", true);
-        AutomationRule motionRule = new AutomationRule("Motion Lights", motionDetected, turnOnLight);
+        AutomationRule motionRule = new AutomationRule("Motion Lights", "If motion detected, turn on lights",
+                motionDetected, turnOnLight);
         engine.addRule(motionRule);
 
         // Rule 2: Time Check (Simulation)
@@ -48,7 +49,8 @@ public class AutomationTest {
         // Actually, TimeCondition checks Minute precision.
         Condition timeCheck = new TimeCondition(triggerTime);
         Action turnOffLight = new DeviceAction("OFF", mainLight.getId(), false);
-        AutomationRule timeRule = new AutomationRule("Scheduled Off", timeCheck, turnOffLight);
+        AutomationRule timeRule = new AutomationRule("Scheduled Off", "If time is late, turn off lights", timeCheck,
+                turnOffLight);
         // We won't add it yet to avoid conflict.
 
         // 3. Execution Test
@@ -81,7 +83,7 @@ public class AutomationTest {
         // Let's set current temp to 15.
         thermo.setCurrentTemperature(15.0);
         Condition tempLow = new ThresholdCondition("Thermostat", "Temperature", "<", 18.0);
-        AutomationRule heatRule = new AutomationRule("Auto Heat", tempLow, heatOn);
+        AutomationRule heatRule = new AutomationRule("Auto Heat", "If too cold, turn on heater", tempLow, heatOn);
         engine.addRule(heatRule);
 
         System.out.println("Thermostat Status Before: " + thermo.getStatus());
